@@ -1,6 +1,6 @@
 <?php
 $db = new SQLite3('./webtunes.db');
-
+var_dump($db);
 // Create tracks table
 $db->exec('CREATE TABLE tracks ( 
 	id        INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -28,3 +28,9 @@ $db->exec('CREATE TABLE artists (
 	name  TEXT
 );');
 
+// Tags - experimental
+$db->exec('CREATE TABLE tags (
+	track_id INTEGER,
+	tag      TEXT,
+	value    TEXT
+);');
