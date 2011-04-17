@@ -4,7 +4,8 @@ class AudioFile {
 
 	public $tags = array();
 	private $path;
-	private $version;
+	private $version_major;
+	private $version_minor;
 	private $flags = array(
 		'unsynchronization' => false,
 		'extended'          => false,
@@ -22,13 +23,25 @@ class AudioFile {
 			return false;
 		}
 
+		$this->version_major = $header['version_major'];
+		$this->version_minor = $header['version_minor'];
+
 		$flags = $header['flags'];
 		$this->flags['unsynchronization'] = (bool) ($flags & 0x80);
 		$this->flags['extended']          = (bool) ($flags & 0x40);
 		$this->flags['experimental']      = (bool) ($flags & 0x20);
 		$this->flags['footer']            = (bool) ($flags & 0x10);
 
-		switch ($header['version_major']) {
+		if ($this->flags['extended']) {
+			throw new Exception('Extended header present, currently unhandled!');
+		}
+
+		if ($this->flags['footer']) {
+			throw new Exception('Footer present, currently unhandled!');
+			echo "Footer present!";
+		}
+
+		switch ($this->version_major) {
 			case 3:
 			case 4:
 				$this->parseTagsId3v23x($fh);
@@ -38,6 +51,30 @@ class AudioFile {
 				break;
 		}
 		fclose($fh);
+	}
+
+	/*
+	 * Depending on placement and major version, size may be encoded as either 
+	 * $xx xx xx xx (4 standard bytes)
+	 * or 
+	 * 4 * %0xxxxxxx (each byte has high bit discarded, total 28 bits)
+	 */
+	private function decodeSize($rawsize) {
+		// ID3v2.3.x uses a logical approach for handling sizes
+		if ($this->version_major == 3) {
+			$size = unpack('N', $rawsize);
+			return $size[1];
+		}
+
+		// ID3v2.4.x does the absurd "drop the 7th bit" thing as described 
+		// above
+		$binary = ''; // bindec this later
+		$bytes = str_split($rawsize);
+		foreach ($bytes as $byte) {
+			$byte = ord($byte) & 0x7F; // Drop the high bit of raw (ordinal) value
+			$binary .= sprintf('%07s', decbin($byte)); // Append to binary string maintaining left zero-padding
+		}
+		return bindec($binary);
 	}
 
 	/*
@@ -54,27 +91,28 @@ class AudioFile {
 			$header = fread($fh, 10);
 
 			$tag   = substr($header, 0, 4);
-			$size  = unpack('N', substr($header, 4, 4));
-			$size  = $size[1];
+			$size  = $this->decodeSize(substr($header, 4, 4));
+
 			$flags = unpack('n', substr($header, 8, 2));
 			$flags = $flags[1];
-
-			// I've seen ID3 tags where the APIC tag has a bogus length, casuing 
-			// the next seek to go crazy. Hence the check
-			// Reported: "10110110111001111001"
-			// Actual:   "1011 1101110 1111001"
-			if ($size > $filesize) {
-				throw new Exception("Invalid size while trying to parse header in file $this->path (tried to read $size bytes)");
-			}
 
 			// We've probably hit the padding leading into the music...
 			if (!trim($tag)) {
 				break;
 			}
 
+			if ($size <= 0) {
+				var_dump($this->version_major);
+				foreach (str_split($tag) as $l) var_dump(ord($l));
+				throw new Exception("Tag $tag is empty (size $size)!");
+				break;
+			}
 			$value = fread($fh, $size);
 			$this->tags[] = new Tag($tag, $flags, $value);
+#			if ($tag == 'TIT2')
+#				$this->frames = new frame\TIT2($flags, $value);
 		}
+		#print_r($this->tags);
 	}
 
 	function import(SQLite3 $db) {
