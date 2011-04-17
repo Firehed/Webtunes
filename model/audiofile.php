@@ -33,12 +33,7 @@ class AudioFile {
 		$this->flags['footer']            = (bool) ($flags & 0x10);
 
 		if ($this->flags['extended']) {
-			throw new Exception('Extended header present, currently unhandled!');
-		}
-
-		if ($this->flags['footer']) {
-			throw new Exception('Footer present, currently unhandled!');
-			echo "Footer present!";
+			$this->parseExtendedHeader($fh);
 		}
 
 		switch ($this->version_major) {
@@ -50,8 +45,21 @@ class AudioFile {
 				echo 'ID3v2.4.x - unhandled right now';
 				break;
 		}
+
+		if ($this->flags['footer'] && $this->version_major >= 4) {
+			$this->parseFooter($fh);
+		}
+
 		fclose($fh);
 	}
+
+	private function parseExtendedHeader($fh) {
+		throw new Exception('parseExtendedHeader not yet implemented');
+	} // parseExtendedHeader
+
+	private function parseFooter($fh) {
+		throw new Excption('parseFooter not yet implemented');
+	} // parseFooter
 
 	/*
 	 * Depending on placement and major version, size may be encoded as either 
