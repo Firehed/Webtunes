@@ -32,7 +32,6 @@ class Tag {
 			default:
 				return;
 		}
-		var_dump($this->tag, $this->flags, $this->value);
 		// First character indicates text encoding
 		switch ($this->value[0]) {
 			case 0:
