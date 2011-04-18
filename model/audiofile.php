@@ -12,25 +12,37 @@ class AudioFile {
 		'experimental'      => false,
 		'footer'            => false,
 	);
+	private $size;
+	private $startOfMusic;
 
 	function __construct($path) {
 		$this->path = $path;
 		$fh = fopen($path, 'r');
 
 		// Tag header is first 10 bytes of file
-		$header = unpack("a3signature/c1version_major/c1version_minor/c1flags/Nsize", fread($fh, 10));
-		if ($header['signature'] != 'ID3') {
+		$header = fread($fh, 10);
+
+		$signature     = substr($header, 0 ,3);
+		$version_major = ord(substr($header, 3, 1));
+		$version_minor = ord(substr($header, 4, 1));
+		$flags         = ord(substr($header, 5, 1));
+		$this->size    = decode_synchsafe(substr($header, 6, 4));
+
+		if ($signature != 'ID3') {
 			return false;
 		}
 
-		$this->version_major = $header['version_major'];
-		$this->version_minor = $header['version_minor'];
+		$this->version_major = $version_major;
+		$this->version_minor = $version_minor;
 
-		$flags = $header['flags'];
 		$this->flags['unsynchronization'] = (bool) ($flags & 0x80);
 		$this->flags['extended']          = (bool) ($flags & 0x40);
 		$this->flags['experimental']      = (bool) ($flags & 0x20);
 		$this->flags['footer']            = (bool) ($flags & 0x10);
+
+		// Length of header += 10, length of footer (if present) += 10
+		// -= 1 to handle position of *next* byte read
+		$this->startOfMusic = $this->size + ($this->flags['footer'] ? 20 : 10) - 1;
 
 		if ($this->flags['extended']) {
 			$this->parseExtendedHeader($fh);
@@ -62,44 +74,32 @@ class AudioFile {
 	} // parseFooter
 
 	/*
-	 * Depending on placement and major version, size may be encoded as either 
-	 * $xx xx xx xx (4 standard bytes)
-	 * or 
-	 * 4 * %0xxxxxxx (each byte has high bit discarded, total 28 bits)
-	 */
-	private function decodeSize($rawsize) {
-		// ID3v2.3.x uses a logical approach for handling sizes
-		if ($this->version_major == 3) {
-			$size = unpack('N', $rawsize);
-			return $size[1];
-		}
-
-		// ID3v2.4.x does the absurd "drop the 7th bit" thing as described 
-		// above
-		$binary = ''; // bindec this later
-		$bytes = str_split($rawsize);
-		foreach ($bytes as $byte) {
-			$byte = ord($byte) & 0x7F; // Drop the high bit of raw (ordinal) value
-			$binary .= sprintf('%07s', decbin($byte)); // Append to binary string maintaining left zero-padding
-		}
-		return bindec($binary);
-	}
-
-	/*
 	 * ID3 tag frame format:
 	 * XXXXYYYYZZ....
 	 * XXXX = frame identifier
-	 * YYYY = frame content length bytes (unsigned long 32-bit big-endian)
+	 * YYYY = frame content length bytes (synchsafe int or unsigned long, 
+	 * depending on version)
 	 * ZZ   = flags
 	 * .... = actual frame content
 	 */
 	function parseTagsId3v23x($fh) {
 		$filesize = filesize($this->path);
 		while (!feof($fh)) {
+			// No padding after previous frame, hit music. We're done here.
+			if (ftell($fh) >= $this->startOfMusic) {
+				break;
+			}
+
 			$header = fread($fh, 10);
 
-			$tag   = substr($header, 0, 4);
-			$size  = $this->decodeSize(substr($header, 4, 4));
+			$tag = substr($header, 0, 4);
+			if ($this->version_major == 3) {
+				$size = unpack('N', substr($header, 4, 4));
+				$size = $size[1];
+			}
+			else {
+				$size = decode_synchsafe(substr($header, 4, 4));
+			}
 
 			$flags = unpack('n', substr($header, 8, 2));
 			$flags = $flags[1];
@@ -109,18 +109,21 @@ class AudioFile {
 				break;
 			}
 
-			if ($size <= 0) {
-				var_dump($this->version_major);
-				foreach (str_split($tag) as $l) var_dump(ord($l));
-				throw new Exception("Tag $tag is empty (size $size)!");
-				break;
+			if ($size >= $this->size) {
+				throw new Exception('Size overload ' . $size);
 			}
-			$value = fread($fh, $size);
+			elseif (!$size) {
+				// There is something invalid with this tag - by definition 
+				// they must be at least 1 byte long
+				throw new UnexpectedValueException("Tag $tag has no size");
+			}
+			else {
+				$value = fread($fh, $size);
+			}
 			$this->tags[] = new Tag($tag, $flags, $value);
 #			if ($tag == 'TIT2')
 #				$this->frames = new frame\TIT2($flags, $value);
 		}
-		#print_r($this->tags);
 	}
 
 	function import(SQLite3 $db) {
