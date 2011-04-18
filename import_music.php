@@ -24,14 +24,6 @@ ini_set('display_errors', true);
 set_error_handler(function($a,$b,$c,$d){throw new ErrorException($b,0,$a,$c,$d);}, -1);
 
 $db = new SQLite3('./webtunes.db');
-/*
-$f = '/Volumes/Drobo/iTunes/Music/AFI/Sing the Sorrow/12 ....but home is nowhere.mp3';
-
-$af = new AudioFile($f);
-
-exit;
-
- */
 
 $dir = new RecursiveDirectoryIterator('/Volumes/Drobo/iTunes/Music');
 $it = new RecursiveIteratorIterator($dir);
@@ -44,10 +36,6 @@ foreach ($it as $file) {
 		try {
 			$af = new AudioFile($file);
 			#$af->import($db);
-#			foreach ($af->tags as $tag) {
-#				echo "$tag->tag: " . ($tag->tag[0] != 'T' ? '<random/binary data>' : $tag->value) . "\n";
-#			}
-#			echo "$file OK!\n";
 			echo '.';
 		}
 		catch (UnexpectedValueException $e) {
