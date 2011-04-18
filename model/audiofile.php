@@ -50,6 +50,9 @@ class AudioFile {
 		$this->parseHeader();
 
 		switch ($this->version_major) {
+			case 2:
+				$this->parseTagsId3v22x();
+				break;
 			case 3:
 				$this->parseTagsId3v23x();
 				break;
@@ -76,6 +79,36 @@ class AudioFile {
 	} // parseFooter
 
 	/*
+	 * ID3v2.2.x tag frame format:
+	 * XXXYYY....
+	 * XXX = frame identifier
+	 * YYY = frame content length bytes
+	 * ... = actual frame content
+	 */
+	private function parseTagsId3v22x() {
+		while (!feof($this->fh)) {
+			// No padding after previous frame, hit music. We're done here
+			if (ftell($this->fh) >= $this->startOfMusic) {
+				break;
+			}
+
+			$header = fread($this->fh, 6);
+
+			$tag = substr($header, 0, 3);
+			$size = unpack('cbig/nsmall', substr($header, 3, 3));
+			$size = 65536 * $size['big'] + $size['small'];
+
+			// We've probably hit the padding leading into the music...
+			if (!trim($tag)) {
+				break;
+			}
+
+			$value = fread($this->fh, $size);
+			$this->tags[] = new Tag($tag, 0, $value);
+		}
+	}
+
+	/*
 	 * ID3v2.3.x tag frame format:
 	 * XXXXYYYYZZ....
 	 * XXXX = frame identifier
@@ -83,8 +116,7 @@ class AudioFile {
 	 * ZZ   = flags
 	 * .... = actual frame content
 	 */
-	function parseTagsId3v23x() {
-		$filesize = filesize($this->path);
+	private function parseTagsId3v23x() {
 		while (!feof($this->fh)) {
 			// No padding after previous frame, hit music. We're done here.
 			if (ftell($this->fh) >= $this->startOfMusic) {
@@ -130,7 +162,6 @@ class AudioFile {
 	 * .... = actual frame content
 	 */
 	private function parseTagsId3v24x() {
-		$filesize = filesize($this->path);
 		while (!feof($this->fh)) {
 			// No padding after previous frame, hit music. We're done here.
 			if (ftell($this->fh) >= $this->startOfMusic) {
