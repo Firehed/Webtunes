@@ -1,9 +1,16 @@
 <?php
 include './model/tag.php';
 include './model/audiofile.php';
+include './class/exceptions.php';
 
 #include './model/frame.php';
 #include './model/frame/tit2.php';
+
+$target = end($_SERVER['argv']);
+if (!is_dir($target)) {
+	echo "$target is not a valid directory.";
+	exit(1);
+}
 
 function dump($s) {
 	foreach (str_split($s) as $l) {
@@ -25,7 +32,7 @@ set_error_handler(function($a,$b,$c,$d){throw new ErrorException($b,0,$a,$c,$d);
 
 $db = new SQLite3('./webtunes.db');
 
-$dir = new RecursiveDirectoryIterator('/Volumes/Drobo/iTunes/Music');
+$dir = new RecursiveDirectoryIterator($target);
 $it = new RecursiveIteratorIterator($dir);
 
 $i = 0;
@@ -37,6 +44,9 @@ foreach ($it as $file) {
 			$af = new AudioFile($file);
 			#$af->import($db);
 			echo '.';
+		}
+		catch (FileSkippedException $e) {
+			echo 'S';
 		}
 		catch (UnexpectedValueException $e) {
 			echo 'W';
