@@ -3,8 +3,12 @@ include './model/tag.php';
 include './model/audiofile.php';
 include './class/exceptions.php';
 
-#include './model/frame.php';
-#include './model/frame/tit2.php';
+function __autoload($c) {
+	$path = strtolower('./class/' . str_replace('\\', '/', $c) . '.php');
+	if (file_exists($path)) {
+		include $path;
+	}
+}
 
 $target = end($_SERVER['argv']);
 if (!is_dir($target)) {
