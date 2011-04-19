@@ -1,9 +1,0 @@
-<?php
-
-namespace frame;
-
-class USLT extends Frame {
-
-	protected static $description = "Unsynchronized lyric/text transcription";
-
-}
