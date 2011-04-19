@@ -44,7 +44,7 @@ class AudioFile {
 		$signature = fread($this->fh, 3);
 		if ($signature != 'ID3') {
 			fclose($this->fh);
-			return false;
+			throw new FileSkippedException;
 		}
 
 		$this->parseHeader();
