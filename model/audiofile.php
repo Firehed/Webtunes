@@ -29,7 +29,8 @@ class AudioFile {
 		$this->size    = decode_synchsafe(substr($header, 6, 4));
 
 		if ($signature != 'ID3') {
-			return false;
+			fclose($fh);
+			throw new FileSkippedException;
 		}
 
 		$this->version_major = $version_major;
