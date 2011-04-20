@@ -2,7 +2,7 @@
 
 class AudioFile {
 
-	public $tags = array();
+	public $frames = array();
 	private $path;
 	private $version_major;
 	private $version_minor;
@@ -89,9 +89,18 @@ class AudioFile {
 				break;
 			}
 
-			list($tag, $flags, $value) = $frame;
-			$class = "\\frame\\$tag";
-			$this->tags[] = new $class($flags, $value);
+			list($name, $flags, $value) = $frame;
+			switch ($name[0]) {
+				// Do not attempt to process experimental frames
+				case 'X':
+				case 'Y':
+				case 'Z':
+					break;
+				default:
+					$class = "\\frame\\$name";
+					$this->frames[] = new $class($flags, $value);
+					break;
+			}
 		}
 	}
 
@@ -105,18 +114,18 @@ class AudioFile {
 	private function v22() {
 		$header = fread($this->fh, 6);
 
-		$tag = substr($header, 0, 3);
+		$name = substr($header, 0, 3);
 		$size = unpack('cbig/nsmall', substr($header, 3, 3));
 		$size = 65536 * $size['big'] + $size['small'];
 
 		// We've probably hit the padding leading into the music...
-		if (!trim($tag)) {
+		if (!trim($name)) {
 			return false;
 		}
 
 		$value = fread($this->fh, $size);
-		return array($tag, 0, $value);
-	}
+		return array($name, 0, $value);
+	} // v22
 
 	/*
 	 * ID3v2.3.x tag frame format:
@@ -129,14 +138,14 @@ class AudioFile {
 	private function v23() {
 		$header = fread($this->fh, 10);
 
-		$tag   = substr($header, 0, 4);
+		$name  = substr($header, 0, 4);
 		$size  = unpack('N', substr($header, 4, 4));
 		$size  = $size[1];
 		$flags = unpack('n', substr($header, 8, 2));
 		$flags = $flags[1];
 
 		// We've probably hit the padding leading into the music...
-		if (!trim($tag)) {
+		if (!trim($name)) {
 			return false;
 		}
 
@@ -144,15 +153,15 @@ class AudioFile {
 			throw new Exception('Size overload ' . $size);
 		}
 		elseif (!$size) {
-			// There is something invalid with this tag - by definition
+			// There is something invalid with this frame - by definition
 			// they must be at least 1 byte long
-			throw new UnexpectedValueException("Tag $tag has no size");
+			throw new UnexpectedValueException("Frame $name has no size");
 		}
 		else {
 			$value = fread($this->fh, $size);
 		}
-		return array($tag, $flags, $value);
-	}
+		return array($name, $flags, $value);
+	} // v23
 
 	/*
 	 * ID3v2.4.x tag frame format:
@@ -165,13 +174,13 @@ class AudioFile {
 	private function v24() {
 		$header = fread($this->fh, 10);
 
-		$tag   = substr($header, 0, 4);
+		$name  = substr($header, 0, 4);
 		$size  = decode_synchsafe(substr($header, 4, 4));
 		$flags = unpack('n', substr($header, 8, 2));
 		$flags = $flags[1];
 
 		// We've probably hit the padding leading into the music...
-		if (!trim($tag)) {
+		if (!trim($name)) {
 			return false;
 		}
 
@@ -179,15 +188,15 @@ class AudioFile {
 			throw new Exception('Size overload ' . $size);
 		}
 		elseif (!$size) {
-			// There is something invalid with this tag - by definition
+			// There is something invalid with this frame - by definition
 			// they must be at least 1 byte long
-			throw new UnexpectedValueException("Tag $tag has no size");
+			throw new UnexpectedValueException("Frame $name has no size");
 		}
 		else {
 			$value = fread($this->fh, $size);
 		}
-		return array($tag, $flags, $value);
-	}
+		return array($name, $flags, $value);
+	} // v24
 
 	function import(SQLite3 $db) {
 		$stmt = $db->prepare('INSERT INTO `tracks` (`name`) VALUES (:name)');
@@ -196,14 +205,13 @@ class AudioFile {
 		#$db->exec('INSERT INTO tracks (`name`) VALUES ("' . sqlite_escape_string($this->path) . '");');
 		$id = $db->lastInsertRowId();
 		$stmt->close();
-		$stmt = $db->prepare('INSERT INTO `tags` (`track_id`, `tag`, `value`) VALUES(:track_id, :tag, :value)');
-
-		foreach ($this->tags as $tag) {
-			if ($tag->tag == 'APIC')
+		$stmt = $db->prepare('INSERT INTO `frames` (`track_id`, `frame`, `value`) VALUES(:track_id, :frame, :value)');
+		foreach ($this->frames as $frame) {
+			if ($frame->tag == 'APIC')
 					continue; // don't store picture!
 			$stmt->bindParam(':track_id', $id, SQLITE3_INTEGER);
-			$stmt->bindParam(':tag', $tag->tag, SQLITE3_STRING);
-			$stmt->bindParam(':value', $tag->value, SQLITE3_STRING);
+			$stmt->bindParam(':frame', $frame->tag, SQLITE3_STRING);
+			$stmt->bindParam(':value', $frame->value, SQLITE3_STRING);
 			$res = $stmt->execute();
 		}
 		$stmt->close();
