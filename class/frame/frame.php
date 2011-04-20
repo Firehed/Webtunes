@@ -39,5 +39,26 @@ abstract class Frame {
 		$this->value = $rawValue;
 	}
 
+	public static $frames = array(
+		'aenc', 'apic', 'aspi',
+		'buf',
+		'cnt',  'com',  'comm', 'comr', 'cra',  'crm',
+		'encr', 'equ',  'equ2', 'equa', 'etc',  'etco',
+		'geo',  'geob', 'grid',
+		'ipl',  'ipls',
+		'link', 'lnk',
+		'mcdi', 'mci',  'mll',  'mllt',
+		'owne',
+		'pcnt', 'pic',  'pop',  'popm', 'poss', 'priv',
+		'rbuf', 'rev',  'rva',  'rva2', 'rvad', 'rvrb',
+		'seek', 'sign', 'slt',  'stc',  'sylt', 'sytc',
+		'tal',  'talb', 'tbp',  'tbpm', 'tcm',  'tcmp', 'tco',  'tcom', 'tcon', 'tcop', 'tcp',  'tcr',  'tda',  'tdat', 'tden', 'tdly',
+		'tdor', 'tdrc', 'tdrl', 'tdtg', 'tdy',  'ten',  'tenc', 'text', 'tflt', 'tft',  'tim',  'time', 'tipl', 'tit1', 'tit2', 'tit3',
+		'tke',  'tkey', 'tla',  'tlan', 'tle',  'tlen', 'tmcl', 'tmed', 'tmoo', 'tmt',  'toa',  'toal', 'tof',  'tofn', 'tol',  'toly',
+		'tope', 'tor',  'tory', 'tot',  'town', 'tp1',  'tp2',  'tp3',  'tp4',  'tpa',  'tpb',  'tpe1', 'tpe2', 'tpe3', 'tpe4', 'tpos',
+		'tpro', 'tpub', 'trc',  'trck', 'trd',  'trda', 'trk',  'trsn', 'trso', 'tsi',  'tsiz', 'tsoa', 'tsop', 'tsot', 'tsrc', 'tss',
+		'tsse', 'tsst', 'tt1',  'tt2',  'tt3',  'txt',  'txx',  'txxx', 'tye',  'tyer',
+		'ufi',  'ufid', 'ult',  'user', 'uslt',
+		'waf',  'war',  'was',  'wcm',  'wcom', 'wcop', 'wcp',  'woaf', 'woar', 'woas', 'wors', 'wpay', 'wpb',  'wpub', 'wxx',  'wxxx',
+	);
 }
-
