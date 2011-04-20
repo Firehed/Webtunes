@@ -29,8 +29,8 @@ $db->exec('CREATE TABLE artists (
 );');
 
 // Tags - experimental
-$db->exec('CREATE TABLE tags (
+$db->exec('CREATE TABLE frames (
 	track_id INTEGER,
-	tag      TEXT,
+	frame    TEXT,
 	value    TEXT
 );');
