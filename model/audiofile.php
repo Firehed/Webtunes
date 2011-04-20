@@ -90,7 +90,8 @@ class AudioFile {
 			}
 
 			list($tag, $flags, $value) = $frame;
-			$this->tags[] = new Tag($tag, $flags, $value);
+			$class = "\\frame\\$tag";
+			$this->tags[] = new $class($flags, $value);
 		}
 	}
 
