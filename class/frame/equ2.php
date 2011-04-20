@@ -6,5 +6,6 @@ class EQU2 extends Frame {
 
 	protected static $description = 'Equalisation (2)';
 	protected static $name        = 'EQU2';
+	protected static $version     = 4;
 
 }

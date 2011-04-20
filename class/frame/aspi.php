@@ -6,5 +6,6 @@ class ASPI extends Frame {
 
 	protected static $description = 'Audio seek point index';
 	protected static $name        = 'ASPI';
+	protected static $version     = 4;
 
 }
