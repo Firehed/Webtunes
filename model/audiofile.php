@@ -97,6 +97,9 @@ class AudioFile {
 				case 'Z':
 					break;
 				default:
+					if (!in_array($name, \frame\Frame::$frames)) {
+						break;
+					}
 					$class = "\\frame\\$name";
 					$this->frames[] = new $class($flags, $value);
 					break;
