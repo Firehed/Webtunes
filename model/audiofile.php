@@ -48,20 +48,7 @@ class AudioFile {
 		}
 
 		$this->parseHeader();
-
-		switch ($this->version_major) {
-			case 2:
-				$this->parseTagsId3v22x();
-				break;
-			case 3:
-				$this->parseTagsId3v23x();
-				break;
-			case 4:
-				$this->parseTagsId3v24x();
-				break;
-			default:
-				throw new Exception("ID3 v2.$this->version_major currently unsupported.");
-		}
+		$this->parseFrames();
 
 		if ($this->flags['footer'] && $this->version_major >= 4) {
 			$this->parseFooter();
@@ -75,8 +62,37 @@ class AudioFile {
 	} // parseExtendedHeader
 
 	private function parseFooter() {
-		throw new Excption('parseFooter not yet implemented');
+		throw new Exception('parseFooter not yet implemented');
 	} // parseFooter
+
+	private function parseFrames() {
+		switch ($this->version_major) {
+			case 2:
+				$parser = 'v22'; 
+				break;
+			case 3:
+				$parser = 'v23';
+				break;
+			case 4:
+				$parser = 'v24';
+				break;
+			default:
+				throw new Exception("ID3 v2.$this->version_major currently unsupported.");
+		}
+		while (!feof($this->fh)) {
+			// No padding after previous frame, hit music. We're done here
+			if (ftell($this->fh) >= $this->startOfMusic) {
+				break;
+			}
+
+			if (FALSE === $frame = $this->$parser()) {
+				break;
+			}
+
+			list($tag, $flags, $value) = $frame;
+			$this->tags[] = new Tag($tag, $flags, $value);
+		}
+	}
 
 	/*
 	 * ID3v2.2.x tag frame format:
@@ -85,27 +101,20 @@ class AudioFile {
 	 * YYY = frame content length bytes
 	 * ... = actual frame content
 	 */
-	private function parseTagsId3v22x() {
-		while (!feof($this->fh)) {
-			// No padding after previous frame, hit music. We're done here
-			if (ftell($this->fh) >= $this->startOfMusic) {
-				break;
-			}
+	private function v22() {
+		$header = fread($this->fh, 6);
 
-			$header = fread($this->fh, 6);
+		$tag = substr($header, 0, 3);
+		$size = unpack('cbig/nsmall', substr($header, 3, 3));
+		$size = 65536 * $size['big'] + $size['small'];
 
-			$tag = substr($header, 0, 3);
-			$size = unpack('cbig/nsmall', substr($header, 3, 3));
-			$size = 65536 * $size['big'] + $size['small'];
-
-			// We've probably hit the padding leading into the music...
-			if (!trim($tag)) {
-				break;
-			}
-
-			$value = fread($this->fh, $size);
-			$this->tags[] = new Tag($tag, 0, $value);
+		// We've probably hit the padding leading into the music...
+		if (!trim($tag)) {
+			return false;
 		}
+
+		$value = fread($this->fh, $size);
+		return array($tag, 0, $value);
 	}
 
 	/*
@@ -116,41 +125,32 @@ class AudioFile {
 	 * ZZ   = flags
 	 * .... = actual frame content
 	 */
-	private function parseTagsId3v23x() {
-		while (!feof($this->fh)) {
-			// No padding after previous frame, hit music. We're done here.
-			if (ftell($this->fh) >= $this->startOfMusic) {
-				break;
-			}
+	private function v23() {
+		$header = fread($this->fh, 10);
 
-			$header = fread($this->fh, 10);
+		$tag   = substr($header, 0, 4);
+		$size  = unpack('N', substr($header, 4, 4));
+		$size  = $size[1];
+		$flags = unpack('n', substr($header, 8, 2));
+		$flags = $flags[1];
 
-			$tag   = substr($header, 0, 4);
-			$size  = unpack('N', substr($header, 4, 4));
-			$size  = $size[1];
-			$flags = unpack('n', substr($header, 8, 2));
-			$flags = $flags[1];
-
-			// We've probably hit the padding leading into the music...
-			if (!trim($tag)) {
-				break;
-			}
-
-			if ($size >= $this->size) {
-				throw new Exception('Size overload ' . $size);
-			}
-			elseif (!$size) {
-				// There is something invalid with this tag - by definition 
-				// they must be at least 1 byte long
-				throw new UnexpectedValueException("Tag $tag has no size");
-			}
-			else {
-				$value = fread($this->fh, $size);
-			}
-			$this->tags[] = new Tag($tag, $flags, $value);
-#			if ($tag == 'TIT2')
-#				$this->frames = new frame\TIT2($flags, $value);
+		// We've probably hit the padding leading into the music...
+		if (!trim($tag)) {
+			return false;
 		}
+
+		if ($size >= $this->size) {
+			throw new Exception('Size overload ' . $size);
+		}
+		elseif (!$size) {
+			// There is something invalid with this tag - by definition
+			// they must be at least 1 byte long
+			throw new UnexpectedValueException("Tag $tag has no size");
+		}
+		else {
+			$value = fread($this->fh, $size);
+		}
+		return array($tag, $flags, $value);
 	}
 
 	/*
@@ -161,40 +161,31 @@ class AudioFile {
 	 * ZZ   = flags
 	 * .... = actual frame content
 	 */
-	private function parseTagsId3v24x() {
-		while (!feof($this->fh)) {
-			// No padding after previous frame, hit music. We're done here.
-			if (ftell($this->fh) >= $this->startOfMusic) {
-				break;
-			}
+	private function v24() {
+		$header = fread($this->fh, 10);
 
-			$header = fread($this->fh, 10);
+		$tag   = substr($header, 0, 4);
+		$size  = decode_synchsafe(substr($header, 4, 4));
+		$flags = unpack('n', substr($header, 8, 2));
+		$flags = $flags[1];
 
-			$tag   = substr($header, 0, 4);
-			$size  = decode_synchsafe(substr($header, 4, 4));
-			$flags = unpack('n', substr($header, 8, 2));
-			$flags = $flags[1];
-
-			// We've probably hit the padding leading into the music...
-			if (!trim($tag)) {
-				break;
-			}
-
-			if ($size >= $this->size) {
-				throw new Exception('Size overload ' . $size);
-			}
-			elseif (!$size) {
-				// There is something invalid with this tag - by definition 
-				// they must be at least 1 byte long
-				throw new UnexpectedValueException("Tag $tag has no size");
-			}
-			else {
-				$value = fread($this->fh, $size);
-			}
-			$this->tags[] = new Tag($tag, $flags, $value);
-#			if ($tag == 'TIT2')
-#				$this->frames = new frame\TIT2($flags, $value);
+		// We've probably hit the padding leading into the music...
+		if (!trim($tag)) {
+			return false;
 		}
+
+		if ($size >= $this->size) {
+			throw new Exception('Size overload ' . $size);
+		}
+		elseif (!$size) {
+			// There is something invalid with this tag - by definition
+			// they must be at least 1 byte long
+			throw new UnexpectedValueException("Tag $tag has no size");
+		}
+		else {
+			$value = fread($this->fh, $size);
+		}
+		return array($tag, $flags, $value);
 	}
 
 	function import(SQLite3 $db) {
