@@ -4,7 +4,7 @@ namespace frame;
 
 class SYLT extends Frame {
 
-	protected static $description = 'Synchronised lyric/text';
+	protected static $description = 'Synchronized lyric/text';
 	protected static $name        = 'SYLT';
 
 }
