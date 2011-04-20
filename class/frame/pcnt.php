@@ -6,5 +6,6 @@ class PCNT extends Frame {
 
 	protected static $description = 'Play counter';
 	protected static $name        = 'PCNT';
+	protected static $version     = 3;
 
 }

@@ -6,5 +6,6 @@ class APIC extends Frame {
 
 	protected static $description = 'Attached picture';
 	protected static $name        = 'APIC';
+	protected static $version     = 3;
 
 }

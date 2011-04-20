@@ -6,5 +6,6 @@ class GRID extends Frame {
 
 	protected static $description = 'Group identification registration';
 	protected static $name        = 'GRID';
+	protected static $version     = 3;
 
 }

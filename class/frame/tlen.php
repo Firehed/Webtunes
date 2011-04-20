@@ -7,5 +7,6 @@ class TLEN extends Frame {
 	protected static $description = 'Length';
 	protected static $is_text     = true;
 	protected static $name        = 'TLEN';
+	protected static $version     = 3;
 
 }

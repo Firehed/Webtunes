@@ -6,5 +6,6 @@ class POSS extends Frame {
 
 	protected static $description = 'Position synchronisation frame';
 	protected static $name        = 'POSS';
+	protected static $version     = 3;
 
 }
