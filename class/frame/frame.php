@@ -4,7 +4,10 @@ namespace frame;
 
 abstract class Frame {
 
-	protected static $is_text  = false;
+	protected static $description = null;
+	protected static $is_text     = false;
+	protected static $name        = null;
+	protected static $version     = null;
 
 	protected $encoding = false;
 	protected $language = false;
