@@ -1,6 +1,4 @@
 <?php
-include './model/tag.php';
-include './model/audiofile.php';
 include './class/exceptions.php';
 
 function __autoload($c) {
@@ -14,12 +12,6 @@ $target = end($_SERVER['argv']);
 if (!is_dir($target)) {
 	echo "$target is not a valid directory.";
 	exit(1);
-}
-
-function dump($s) {
-	foreach (str_split($s) as $l) {
-		echo ord($l), ": ", sprintf('0x%02s', dechex(ord($l))), ' (', $l, ')', "\n";
-	}
 }
 
 function decode_synchsafe($ss) {
