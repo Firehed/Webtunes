@@ -36,10 +36,24 @@ abstract class Frame {
 	}
 
 	protected function parseValue($rawValue) {
-		if (static::$is_text) {
-			// do the encoding thing
-		}
 		$this->value = $rawValue;
+		if (static::$is_text) {
+			switch ($this->value[0]) {
+				case 0:
+					$this->value = iconv('ISO-8859-1', 'UTF-8', substr($this->value, 1));
+					break;
+				case 1:
+					$this->value = iconv('UTF-16LE', 'UTF-8', substr($this->value, 3));
+					break;
+				case 2:
+					$this->value = iconv('UTF-16BE', 'UTF-8', substr($this->value, 3));
+					break;
+				case 3:
+					$this->value = substr($this->value, 1);
+					break;
+			}
+			$this->value = rtrim($this->value); // Remove any padding null bytes
+		}
 	}
 
 	public static $frames = array(
