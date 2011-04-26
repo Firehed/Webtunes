@@ -4,6 +4,11 @@ namespace frame;
 
 abstract class Frame {
 
+	const Encoding_ISO88591 = 0;
+	const Encoding_UTF16LE  = 1;
+	const Encoding_UTF16BE  = 2;
+	const Encoding_UTF8     = 3;
+
 	protected static $description = null;
 	protected static $is_text     = false;
 	protected static $name        = null;
@@ -39,16 +44,16 @@ abstract class Frame {
 		$this->value = $rawValue;
 		if (static::$is_text) {
 			switch ($this->value[0]) {
-				case 0:
+				case self::Encoding_ISO88591:
 					$this->value = iconv('ISO-8859-1', 'UTF-8', substr($this->value, 1));
 					break;
-				case 1:
+				case self::Encoding_UTF16LE:
 					$this->value = iconv('UTF-16LE', 'UTF-8', substr($this->value, 3));
 					break;
-				case 2:
+				case self::Encoding_UTF16BE:
 					$this->value = iconv('UTF-16BE', 'UTF-8', substr($this->value, 3));
 					break;
-				case 3:
+				case self::Encoding_UTF8:
 					$this->value = substr($this->value, 1);
 					break;
 			}
